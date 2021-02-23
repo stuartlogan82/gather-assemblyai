@@ -56,6 +56,8 @@ def process_recording():
     red.srem("waiting", call_sid)
     red.set(call_sid, " ".join(word_list))
 
+    delete_recording(recording_path)
+
     return 'OK', 200
 
 
@@ -93,3 +95,7 @@ def send_to_transcribe(recording_path):
         word_list.append(_['text'])
 
     return word_list
+
+
+def delete_recording(recording_path):
+    os.remove(recording_path)
