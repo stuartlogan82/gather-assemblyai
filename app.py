@@ -21,25 +21,35 @@ def welcome():
     response = VoiceResponse()
     print(str(session.items()))
     if session.get('welcome') is None:
+        # Set Session Variables
         caller = request.form.get('Caller')
         call_sid = request.form.get('CallSid')
         session['caller'] = caller
         session['call_sid'] = call_sid
         session['welcome'] = False
         session['loops'] = 0
+
+        # Greet Caller
         response.say('Welcome! What would you like to talk about today?')
         response.record(max_length=15, recording_status_callback_event="completed",
                         recording_status_callback=url_for('process_recording'), play_beep=False)
         session['welcome'] = True
+
+        # add callsid to redis set so we know that the welcome is complete
+        # but we don't have anything to say back to the caller yet
         red.sadd("waiting", call_sid)
     elif red.sismember("waiting", session['call_sid']):
+        # there's probably a better way to do this rather than the call looping
         print("Waiting for Assembly AI to return text")
         response.pause(1)
         response.redirect(url_for('welcome'))
     else:
+        # there is something to say to the caller
+        # fetch it from redis and <Say> it
         text = red.get(session['call_sid']).decode("utf-8")
         response.say(text)
         response.hangup()
+
     session['loops'] = session.get('loops') + 1
     print(f"LOOPS: {session['loops']}")
     return str(response)
@@ -50,12 +60,19 @@ def process_recording():
     call_sid = request.form.get('CallSid')
     recording_sid = request.form.get('RecordingSid')
 
+    # Download the wav file from Twilio
     recording_path = fetch_recording(recording_sid)
+
+    # Send the wav file to AssemblyAI and get back the list of transcribed words
     word_list = send_to_transcribe(recording_path)
 
-    red.srem("waiting", call_sid)
+    # Add the text to Redis to echo back to the caller
     red.set(call_sid, " ".join(word_list))
 
+    # Remove callsid from Redis waiting set so that call execution can continue
+    red.srem("waiting", call_sid)
+
+    # Delete the recording to free disk space
     delete_recording(recording_path)
 
     return 'OK', 200
