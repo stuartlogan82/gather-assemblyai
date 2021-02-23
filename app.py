@@ -48,9 +48,18 @@ def welcome():
 @app.route('/process_recording', methods=['POST'])
 def process_recording():
     call_sid = request.form.get('CallSid')
-    recording_url = request.form.get('RecordingUrl')
     recording_sid = request.form.get('RecordingSid')
 
+    recording_path = fetch_recording(recording_sid)
+    word_list = send_to_transcribe(recording_path)
+
+    red.srem("waiting", call_sid)
+    red.set(call_sid, " ".join(word_list))
+
+    return 'OK', 200
+
+
+def fetch_recording(recording_sid):
     url = f"https://api.twilio.com/2010-04-01/Accounts/{os.environ.get('TWILIO_ACCOUNT_SID')}/Recordings/{recording_sid}"
 
     headers = {
@@ -63,6 +72,10 @@ def process_recording():
     with open(recording_path, "wb") as recording:
         recording.write(response.content)
 
+    return recording_path
+
+
+def send_to_transcribe(recording_path):
     api_token = os.environ.get('ASSEMBLY_AI_TOKEN')
     headers = {'authorization': api_token}
 
@@ -79,11 +92,4 @@ def process_recording():
     for _ in words:
         word_list.append(_['text'])
 
-    red.srem("waiting", call_sid)
-    red.set(call_sid, " ".join(word_list))
-    return 'OK', 200
-
-
-def send_to_transcribe(recording):
-    # TODO: format wav file and send to AssemblyAI. Return text
-    pass
+    return word_list
