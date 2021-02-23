@@ -51,20 +51,22 @@ def process_recording():
     recording_url = request.form.get('RecordingUrl')
     recording_sid = request.form.get('RecordingSid')
 
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCT_SID}/Recordings/{recording_sid}"
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{os.environ.get('TWILIO_ACCOUNT_SID')}/Recordings/{recording_sid}"
 
     headers = {
         'Authorization': f'Basic {os.environ.get("TWILIO_BASIC_AUTH")}'
     }
 
     response = requests.request("GET", url, headers=headers)
-    with open(f"{recording_sid}.wav", "wb") as recording:
+    recording_path = os.path.join('./recordings/', f'{recording_sid}.wav')
+
+    with open(recording_path, "wb") as recording:
         recording.write(response.content)
 
     api_token = os.environ.get('ASSEMBLY_AI_TOKEN')
     headers = {'authorization': api_token}
 
-    data = base64.b64encode(open(f"{recording_sid}.wav", "rb").read()[
+    data = base64.b64encode(open(recording_path, "rb").read()[
                             44:]).decode("utf-8")
 
     json_data = {'audio_data': data}
