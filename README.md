@@ -9,7 +9,7 @@ If you want to start building conversational IVRs and you want to bring your own
 - [Redis](https://redis.io/)
 
 ## Flow
-1. Call comes in to Twilio number which sends a webhok to the `/welcome` endpoint
+1. Call comes in to Twilio number which sends a webhook to the `/welcome` endpoint
 2. Return TwiML to greet caller and record snippet of voice
 3. `CallSid` is added to Redis set to inform the `/welcome` endpoint that we are waiting for the recording to be processed
 4. Twilio processes recording and sends webhook to `/process_recording `endpoint
